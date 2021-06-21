@@ -56,5 +56,11 @@ namespace MonteKarloApp.Models.Data
             a = b;
             b = tmp;
 		}
+
+        public Point Clone()
+		{
+            Point result = new Point(X, Y);
+            return result;
+		}
     }
 }

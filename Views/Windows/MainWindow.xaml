@@ -46,6 +46,14 @@
                             <TextBlock Text="y(t) = "/>
                             <TextBox Width="200" Text="{Binding YTExpression, UpdateSourceTrigger=PropertyChanged}"/>
                         </StackPanel>
+                        <StackPanel Orientation="Horizontal" Margin="0,5">
+                            <TextBlock Text="x'(t) = "/>
+                            <TextBox Width="200" Text="{Binding XTDExpression, UpdateSourceTrigger=LostFocus}"/>
+                        </StackPanel>
+                        <StackPanel Orientation="Horizontal" Margin="0,5">
+                            <TextBlock Text="y'(t) = "/>
+                            <TextBox Width="200" Text="{Binding YTDExpression, UpdateSourceTrigger=LostFocus}"/>
+                        </StackPanel>
                         <TextBlock Text="Задайте изменение параметра t" HorizontalAlignment="Center"/>
                         <StackPanel Margin="0,5">
                             <StackPanel Orientation="Horizontal">
@@ -83,8 +91,9 @@
                     <Button Content="Показать область" Command="{Binding ShowBorderAreaCommand}"/>
                     <Button Content="Стереть область" Command="{Binding ClearBorderAreaCommand}"/>
                     <Button Content="Описывающий прямоугольник" Command="{Binding ShowOrClearBoundingSquareCommand}"/>
-                    <Button Content="Монте-Карло"/>
-                    <Button Content="Центр тяжести"/>
+                    <Button Content="Показать Монте-Карло" Command="{Binding ShowMonteKarloCommand}"/>
+                    <Button Content="Убрать Монте-Карло" Command="{Binding ClearMonteKarloCommand}"/>
+                    <Button Content="Центр тяжести" Command="{Binding ShowOrClearCenterCommand}"/>
                 </UniformGrid>
                 <oxy:Plot>
                     <oxy:Plot.Axes>
@@ -101,15 +110,35 @@
                                         DataFieldX="X"
                                         DataFieldY="Y"
                                         Color="BlueViolet"/>
+                    <oxy:LineSeries ItemsSource="{Binding BadPoints}"
+                                         DataFieldX="X"
+                                         DataFieldY="Y"
+                                         Color="Transparent"
+                                         MarkerType="Circle" 
+                                         MarkerSize="1"
+                                         MarkerFill="Red"/>
+                    <oxy:LineSeries ItemsSource="{Binding GoodPoints}"
+                                         DataFieldX="X"
+                                         DataFieldY="Y"
+                                         Color="Transparent"
+                                         MarkerType="Circle" 
+                                         MarkerSize="1"
+                                         MarkerFill="Green"/>
+                    <oxy:LineSeries ItemsSource="{Binding Center}" Title="Центр тяжести"
+                                    DataFieldX="X"
+                                    DataFieldY="Y"
+                                    MarkerType="Circle"
+                                    MarkerSize="6"
+                                    MarkerFill="DeepSkyBlue"/>
                 </oxy:Plot>
             </DockPanel>
             <GroupBox Grid.Column="2" Width="255" Header="Рассчет">
                 <StackPanel>
                     <StackPanel Orientation="Horizontal" Margin="0,5">
                         <TextBlock Text="Число генерируемых точек ="/>
-                        <TextBox Width="75" Margin="5,0"/>
+                        <TextBox Width="75" Margin="5,0" Text="{Binding PointsNumber, UpdateSourceTrigger=PropertyChanged, Converter={cv:IntToStringConverter}}"/>
                     </StackPanel>
-                    <Button Content="Рассчитать площадь области" HorizontalAlignment="Right" Margin="0,0,0,10"/>
+                    <Button Content="Рассчитать площадь области" HorizontalAlignment="Right" Margin="0,0,0,10" Command="{Binding CalculateSquareCommand}"/>
                     <Grid>
                         <Grid.Resources>
                             <Style TargetType="TextBlock">
@@ -138,20 +167,19 @@
                         <TextBlock Grid.Row="1" Grid.Column="0" Text="Площадь по Монте-Карло" TextWrapping="Wrap"/>
                         <TextBlock Grid.Row="2" Grid.Column="0" Text="Разница" TextWrapping="Wrap"/>
 
-                        <TextBox Grid.Row="0" Grid.Column="1" Margin="0,5"/>
-                        <TextBox Grid.Row="1" Grid.Column="1" Margin="0,5"/>
-                        <TextBox Grid.Row="2" Grid.Column="1"/>
+                        <TextBox Grid.Row="0" Grid.Column="1" Margin="0,5" Text="{Binding SimpsonSquare, UpdateSourceTrigger=PropertyChanged}"/>
+                        <TextBox Grid.Row="1" Grid.Column="1" Margin="0,5" Text="{Binding MonteKarloSquare, UpdateSourceTrigger=PropertyChanged}"/>
+                        <TextBox Grid.Row="2" Grid.Column="1" Text="{Binding Difference, UpdateSourceTrigger=PropertyChanged}"/>
                     </Grid>
                     
                     <StackPanel Margin="0,5">
                         <TextBlock Text="Центр тяжести" HorizontalAlignment="Center"/>
                         <StackPanel Orientation="Horizontal" Margin="0,5">
                             <TextBlock Text="X:"/>
-                            <TextBox Width="100" Margin="5,0"/>
+                            <TextBox Width="100" Margin="5,0" Text="{Binding CenterX}"/>
                             <TextBlock Text="Y:" Margin="9,0,0,0"/>
-                            <TextBox Width="100" Margin="5,0"/>
+                            <TextBox Width="100" Margin="5,0" Text="{Binding CenterY}"/>
                         </StackPanel>
-                        <Button Content="Найти" HorizontalAlignment="Center" Width="100" Margin="0,0,5,10"/>
                     </StackPanel>
                 </StackPanel>
             </GroupBox>

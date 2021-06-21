@@ -6,7 +6,6 @@ using System.Collections.ObjectModel;
 using System.Text;
 using System.Windows.Markup;
 using MonteKarloApp.Infrastructure.Commands;
-using MonteKarloApp.Infrastructure.Converters;
 using System.Windows.Input;
 using org.mariuszgromada.math.mxparser;
 using MonteKarloApp.Models.Methods;
@@ -27,6 +26,7 @@ namespace MonteKarloApp.ViewModels
 			CalculateSquareCommand = new LambdaCommand(OnCalculateSquareCommandExecuted, CanCalculateSquareCommandExecute);
 			ShowMonteKarloCommand = new LambdaCommand(OnShowMonteKarloCommandExecuted, CanShowMonteKarloCommandExecute);
 			ClearMonteKarloCommand = new LambdaCommand(OnClearMonteKarloCommandExecuted, CanClearMonteKarloCommandExecute);
+			ShowOrClearCenterCommand = new LambdaCommand(OnShowOrClearCenterCommandExecuted, CanShowOrClearCenterCommandExecute);
 		}
 
 		#region Properties
@@ -41,6 +41,15 @@ namespace MonteKarloApp.ViewModels
 
 		private string _monteKarloSquare = "";
 		public string MonteKarloSquare { get => _monteKarloSquare; set => Set(ref _monteKarloSquare, value); }
+
+		private string _difference = "";
+		public string Difference { get => _difference; set => Set(ref _difference, value); }
+
+		private string _centerX = "";
+		public string CenterX { get => _centerX; set => Set(ref _centerX, value); }
+
+		private string _centerY = "";
+		public string CenterY { get => _centerY; set => Set(ref _centerY, value); }
 
 		private string _xtExpression = "";
 		public string XTExpression { get => _xtExpression; set => Set(ref _xtExpression, value); }
@@ -69,6 +78,38 @@ namespace MonteKarloApp.ViewModels
 		private List<Point> _goodPoints = new List<Point>();
 		public ObservableCollection<Point> BadPoints { get; private set; } = new ObservableCollection<Point>();
 		private List<Point> _badPoints = new List<Point>();
+
+		public ObservableCollection<Point> Center { get; private set; } = new ObservableCollection<Point>();
+
+		private string _xtdExpression = "";
+		public string XTDExpression 
+		{ 
+			get => _xtdExpression;
+			set
+			{
+				if (value == "")
+					_ytdFunction = null;
+				Set(ref _xtdExpression, value);
+				_xtdFunction = new Function($"f(t) = {_xtdExpression.Replace(',', '.')}");
+				_ytdExpression = "";
+			}
+		}
+		private Function _xtdFunction;
+
+		private string _ytdExpression = "";
+		public string YTDExpression 
+		{ 
+			get => _ytdExpression;
+			set
+			{
+				if (value == "")
+					_ytdFunction = null;
+				Set(ref _ytdExpression, value);
+				_ytdFunction = new Function($"f(t) = {_ytdExpression.Replace(',', '.')}");
+				XTDExpression = "";
+			}
+		}
+		private Function _ytdFunction;
 		#endregion
 
 		#region Commands
@@ -176,7 +217,7 @@ namespace MonteKarloApp.ViewModels
 			{
 				SimpsonMethod simpsonMethod = new SimpsonMethod();
 				GetExtreemPoints(out double minX, out double maxX, out double minY, out double maxY);
-				double simpsonSquare = simpsonMethod.GetSolutionWithAutoStep(GetFunctionValue, minX, maxX, PRECISION, 1);
+				double simpsonSquare = MonteKarlo(PointsNumber * 10);
 				SimpsonSquare = simpsonSquare.ToString();
 
 				double x, y;
@@ -209,15 +250,26 @@ namespace MonteKarloApp.ViewModels
 					}
 					if ((intersections_count % 2 == 1) && rndPoint.X >= minX && rndPoint.Y >= minY && rndPoint.X <= maxX && rndPoint.Y <= maxY)
 					{
-						_goodPoints.Add(rndPoint);
+						_goodPoints.Add(rndPoint.Clone());
 					}
 					else
 					{
-						_badPoints.Add(rndPoint);
+						_badPoints.Add(rndPoint.Clone());
 					}
 				}
 				double monteKarloSquare = _goodPoints.Count / (double)PointsNumber * rectangleSquare;
 				MonteKarloSquare = monteKarloSquare.ToString();
+				Difference = (Math.Abs(simpsonSquare - monteKarloSquare)).ToString();
+				double xCenter = 0, yCenter = 0;
+				for (int i = 0; i < _goodPoints.Count; i++)
+				{
+					xCenter += _goodPoints[i].X;
+					yCenter += _goodPoints[i].Y;
+				}
+				xCenter /= _goodPoints.Count;
+				yCenter /= _goodPoints.Count;
+				CenterX = xCenter.ToString();
+				CenterY = yCenter.ToString();
 				Status = "Площадь рассчитана успешно";
 			}
 			catch (Exception e)
@@ -225,7 +277,7 @@ namespace MonteKarloApp.ViewModels
 				Status = $"Неудача, причина - {e.Message}";
 			}
 		}
-		private bool CanCalculateSquareCommandExecute(object p) => BorderAreaTable.Count > 0;
+		private bool CanCalculateSquareCommandExecute(object p) => BorderAreaTable.Count > 0 && (_xtdFunction != null || _ytdFunction != null);
 		#endregion
 
 		#region ShowMonteKarloCommand
@@ -234,8 +286,8 @@ namespace MonteKarloApp.ViewModels
 		{
 			try
 			{
-				int minGoodpointsAmount = _goodPoints.Count > 1000 ? 1000 : _goodPoints.Count;
-				int minBadpointsAmount = _badPoints.Count > 1000 ? 1000 : _badPoints.Count;
+				int minGoodpointsAmount = _goodPoints.Count > 5000 ? 5000 : _goodPoints.Count;
+				int minBadpointsAmount = _badPoints.Count > 5000 ? 5000 : _badPoints.Count;
 				GoodPoints.Clear();
 				BadPoints.Clear();
 				for (int i = 0; i < minGoodpointsAmount; i++)
@@ -268,6 +320,33 @@ namespace MonteKarloApp.ViewModels
 
 		#endregion
 
+		#region ShowOrClearCenterCommand
+		public ICommand ShowOrClearCenterCommand { get; }
+		private void OnShowOrClearCenterCommandExecuted(object p)
+		{
+			try
+			{
+				if (Center.Count > 0)
+				{
+					Center.Clear();
+					Status = "Центр стерт";
+				}					
+				else
+				{
+					double x = Convert.ToDouble(CenterX.Replace('.', ','));
+					double y = Convert.ToDouble(CenterY.Replace('.', ','));
+					Center.Add(new Point(x, y));
+					Status = "Центр отображен";
+				}				
+			}
+			catch(Exception e)
+			{
+				Status = $"Неудача, причина - {e.Message}";
+			}
+		}
+		private bool CanShowOrClearCenterCommandExecute(object p) => !(string.IsNullOrWhiteSpace(CenterX) || string.IsNullOrWhiteSpace(CenterY));
+		#endregion
+
 		#endregion
 
 		private void GetExtreemPoints(out double minX, out double maxX, out double minY, out double maxY)
@@ -292,15 +371,68 @@ namespace MonteKarloApp.ViewModels
 		private double GetFunctionValue(double arg)
 		{
 			double result = 0;
-			for (int i = 0; i < BorderAreaTable.Count; i++)
+			if (_xtdFunction != null)
 			{
-				if (arg == BorderAreaTable[i].X)
+				for (int i = 0; i < BorderAreaTable.Count; i++)
 				{
-					result = BorderAreaTable[i].Y;
-					break;
-				}	
+					if (arg == BorderAreaTable[i].ParamT)
+					{
+						result = BorderAreaTable[i].Y * _xtdFunction.calculate(arg);
+						break;
+					}
+				}
+			}
+			else
+			{
+				for (int i = 0; i < BorderAreaTable.Count; i++)
+				{
+					if (arg == BorderAreaTable[i].ParamT)
+					{
+						result = BorderAreaTable[i].X * _ytdFunction.calculate(arg);
+						break;
+					}
+				}
 			}
 			return result;
+		}
+
+		private double MonteKarlo(int numberOfPoints)
+		{
+			GetExtreemPoints(out double minX, out double maxX, out double minY, out double maxY);
+			double x, y;
+			Point rndPoint = new Point(0, 0);
+			Point firstSegmentPoint = new Point(0, 0);
+			Point secondSegmentPoint = new Point(0, 0);
+			Point outsidePoint = new Point(maxX * 1.1, maxY * 1.1);
+			Random random = new Random();
+			int intersections_count = 0;
+			double rectangleSquare = (maxX - minX) * (maxY - minY);
+			List<Point> goodPoints = new List<Point>();
+			for (int i = 0; i < numberOfPoints; i++)
+			{
+				x = minX + (maxX - minX) * random.NextDouble();
+				y = minY + (maxY - minY) * random.NextDouble();
+				rndPoint.X = x;
+				rndPoint.Y = y;
+				for (int j = 0; j < BorderAreaTable.Count - 1; j++)
+				{
+					firstSegmentPoint.X = BorderAreaTable[j].X;
+					firstSegmentPoint.Y = BorderAreaTable[j].Y;
+
+					secondSegmentPoint.X = BorderAreaTable[j + 1].X;
+					secondSegmentPoint.Y = BorderAreaTable[j + 1].Y;
+					if (Point.Intersect(outsidePoint, rndPoint, firstSegmentPoint, secondSegmentPoint))
+					{
+						intersections_count++;
+					}
+				}
+				if ((intersections_count % 2 == 1) && rndPoint.X >= minX && rndPoint.Y >= minY && rndPoint.X <= maxX && rndPoint.Y <= maxY)
+				{
+					goodPoints.Add(rndPoint.Clone());
+				}
+			}
+			double monteKarloSquare = goodPoints.Count / (double)numberOfPoints * rectangleSquare;
+			return monteKarloSquare;
 		}
 	}
 }
